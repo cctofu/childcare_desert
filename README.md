@@ -1,19 +1,18 @@
-# Eliminating Child Care Deserts in New York State
+# Eliminating Child Care Deserts in New York State 
 
-### Install dependencies
+### Install dependencies 
 Create conda environment and install dependencies
 ```
 conda env create -f environment.yml
 ```
-Put following data files in folder named `data`
-Structure should look like:
+Put the 5 data files for the given problem in folder named `data`, this should create a structure that looks like:
 ```
 childcare_desert/
 │
 ├── code/
-│   ├── main.py
-│   ├── utils.py
-│   └── __init__.py
+│   ├── structs/
+│   ├── create_zipcodes.py
+│   └── optimize.py
 │
 └──data/
     ├── avg_individual_income.csv
