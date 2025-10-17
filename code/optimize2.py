@@ -29,17 +29,22 @@ def optimize(zipcodes: Zipcodes):
     m = Model("childcare_deserts")
 
     # Decision variables
-    x, u, z = {}, {}, {}
+    x, u = {}, {}
     for i in I:
         for f in F[i]:
             x[f] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"x[{f}]")
             u[f] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"u[{f}]")
-            z[f] = m.addVar(vtype=GRB.BINARY, name=f"z[{f}]")
     y, v = {}, {}
     for i in I:
         for s in FACILITY_TYPES:
             y[i, s] = m.addVar(vtype=GRB.INTEGER, lb=0, name=f"y[{i},{s}]")
             v[i, s] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"v[{i},{s}]")
+    x1, x2, x3 = {}, {}, {}
+    for i in I:
+        for f in F[i]:
+            x1[f] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"x1[{f}]")
+            x2[f] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"x2[{f}]")
+            x3[f] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"x3[{f}]")
     m.update()
 
     # Constraints
@@ -75,6 +80,19 @@ def optimize(zipcodes: Zipcodes):
         for f in F[i]:
             m.addConstr(u[f] <= x[f], name=f"u_le_x[{f}]")
 
+    for i in I:
+        for f in F[i]:
+            m.addConstr(x[f] == x1[f] + x2[f] + x3[f], name=f"tier_sum[{f}]")
+    
+    for i in I:
+        for f in F[i]:
+            n_f = zipcodes.get_total_cap_for_facility(i, f)
+            m.addConstr(x1[f] <= 0.10 * n_f, name=f"tier1_cap[{f}]")
+            m.addConstr(x2[f] <= 0.05 * n_f, name=f"tier2_cap[{f}]")
+            m.addConstr(x3[f] <= 0.05 * n_f, name=f"tier3_cap[{f}]")
+            # Optional hard cap for numerical safety:
+            m.addConstr(x[f] <= 0.20 * n_f, name=f"expansion_20pct[{f}]")
+
     # Consistency: 0 <= v_{i,s} <= Cap05_s * y_{i,s}
     for i in I:
         for s in FACILITY_TYPES:
@@ -82,21 +100,23 @@ def optimize(zipcodes: Zipcodes):
                 v[i, s] <= FACILITY_TYPES[s]["Cap05"] * y[i, s],
                 name=f"v_cap[{i},{s}]"
             )
-
-    # Binary trigger for baseline expansion cost: z_f indicates whether expansion reaches baseline cap
-    for i in I:
-        for f in F[i]:
-            cap = zipcodes.get_total_cap_for_facility(i, f)
-            x_max = min(1.2 * cap, 500.0)
-            M = x_max + cap
-            m.addConstr(x[f] - cap <= M * z[f], name=f"trigger_up[{f}]")
-            m.addConstr(x[f] - cap >= -M * (1 - z[f]), name=f"trigger_lo[{f}]")
+    
 
     # ---------- Objective ----------
     # Uses global DELTA, ALPHA, BETA, FACILITY_TYPES
-    expansion_cost = quicksum((DELTA + 200.0 * zipcodes.get_total_cap_for_facility(i,f)) * z[f] + ALPHA * x[f]for i in I for f in F[i])
+    expansion_cost_terms = []
+    for i in I:
+        for f in F[i]:
+            n_f = zipcodes.get_total_cap_for_facility(i, f)
+            s1 = (20000.0 + 200.0  * n_f) / n_f
+            s2 = (20000.0 + 400.0  * n_f) / n_f
+            s3 = (20000.0 + 1000.0 * n_f) / n_f
+            expansion_cost_terms.append(s1 * x1[f] + s2 * x2[f] + s3 * x3[f])
+
+    expansion_cost = quicksum(expansion_cost_terms)
     new_build_cost = quicksum(FACILITY_TYPES[s]["Cost"] * y[i, s] for i in I for s in FACILITY_TYPES)
 
+    new_build_cost = quicksum(FACILITY_TYPES[s]["Cost"] * y[i, s] for i in I for s in FACILITY_TYPES)
     equip_cost = BETA * (
         quicksum(u[f] for i in I for f in F[i]) +
         quicksum(v[i, s] for i in I for s in FACILITY_TYPES)
