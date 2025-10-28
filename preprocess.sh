@@ -4,7 +4,6 @@ set -e
 # Activate your virtual environment if needed
 # conda activate optimization
 
-
 # Create dataset
 OUT_PATH="./outputs/zipcodes_partial.json"
 #python ./code/create_zipcodes.py "$OUT_PATH"

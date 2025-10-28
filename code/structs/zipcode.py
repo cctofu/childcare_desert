@@ -1,6 +1,7 @@
 from collections import defaultdict
 import json
 import colorful as cf
+import math
 
 class Zipcodes:
     def __init__(self, data=None):
@@ -50,6 +51,12 @@ class Zipcodes:
     
     def get_total_cap_for_facility(self, key, facility):
         return self.data[key]['childcare_dict'][facility]['total_capacity']
+    
+    def get_total_cap_for_zipcode(self, key):
+        total = 0
+        for f in self.data[key]['childcare_dict']:
+            total += self.data[key]['childcare_dict'][f]['total_capacity']
+        return total
     
     def get_infant_cap_for_facility(self, key, facility):
         return self.data[key]['childcare_dict'][facility]['infant_capacity']
@@ -106,6 +113,58 @@ class Zipcodes:
             self.missing_data.remove(key)
             self.complete_data.add(key)
     
+    def save_data_to_path(self, path):
+        with open(path, "w") as f:
+            json.dump(self.data, f, indent=2)
+
+    def get_total_capacity_for_id(self, facility_id):
+        return self.childcare_dict[facility_id]["total_capacity"]
+    
+    def get_05_capacity_for_id(self, facility_id):
+        return (self.childcare_dict[facility_id]["infant_capacity"] + 
+                self.childcare_dict[facility_id]["toddler_capacity"] + 
+                self.childcare_dict[facility_id]["preschool_capacity"])
+
+    def _haversine_miles(self, lat1, lon1, lat2, lon2):
+        R = 3958.8 
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lon2 - lon1)
+        a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
+
+    def get_distance(self, facility1, facility2):
+        """Return distance (miles) between two existing facilities."""
+        f1, f2 = None, None
+        for zipcode_data in self.data.values():
+            childcare_dict = zipcode_data.get("childcare_dict", {})
+            if facility1 in childcare_dict:
+                f1 = childcare_dict[facility1]
+            if facility2 in childcare_dict:
+                f2 = childcare_dict[facility2]
+        if not f1 or not f2:
+            raise ValueError(f"Facilities {facility1} and/or {facility2} not found.")
+        return self._haversine_miles(f1["latitude"], f1["longitude"], f2["latitude"], f2["longitude"])
+
+
+    def get_site_distance(self, zipcode, site_idx1, site_idx2):
+        """Return distance (miles) between two potential locations in a zipcode."""
+        locs = self.data[zipcode]["potential_locations"]
+        lat1, lon1 = locs[site_idx1]["latitude"], locs[site_idx1]["longitude"]
+        lat2, lon2 = locs[site_idx2]["latitude"], locs[site_idx2]["longitude"]
+        return self._haversine_miles(lat1, lon1, lat2, lon2)
+
+
+    def get_distance_to_facility(self, zipcode, site_idx, facility_id):
+        """Return distance (miles) between a potential site and an existing facility."""
+        loc = self.data[zipcode]["potential_locations"][site_idx]
+        fac = self.data[zipcode]["childcare_dict"][facility_id]
+        return self._haversine_miles(
+            loc["latitude"], loc["longitude"],
+            fac["latitude"], fac["longitude"]
+        )
+
     def print_summary(self):
         def pct(x): 
             return 0.0 if total == 0 else 100.0 * x / total
@@ -171,52 +230,4 @@ class Zipcodes:
         for key, value in summary["missing_percentages"].items():
             print(cf.yellow(f"  {key:<20}") + cf.bold(f"{value:.2f}%"))
         print(cf.bold(cf.seaGreen("============================")))
-
-
-    def save_data_to_path(self, path):
-        with open(path, "w") as f:
-            json.dump(self.data, f, indent=2)
-    
-    '''CHANGES NEEDED
-    def save_missing_to_path(self, path):
-        with open(path, "w") as f:
-            json.dump(self.missing_data, f, indent=2)
-    
-    def save_complete_to_path(self, path):
-        with open(path, "w") as f:
-            json.dump(self.complete_data, f, indent=2)
-    '''
-
-    '''
-    def __init__(self, entry):
-        EMPLOYMENT_THRESH = 0.60
-    INCOME_THRESH = 60000.0
-        self.population0_12 = entry.get("population0_12")
-        self.population0_5 = entry.get("population0_5")
-        income = float(entry.get("avg_individual_income"))
-        employment_rate = float(entry.get("employment_rate"))
-
-        if employment_rate >= EMPLOYMENT_THRESH or income <= INCOME_THRESH:
-            self.theta = 0.5
-        else:
-            self.theta = (1.0 / 3.0)
-
-        self.capacity0_12 = 0
-        self.capacity0_5 = 0
-        self.childcare_dict = entry.get("childcare_dict")
-        self.facility_ids = []
-        for f in self.childcare_dict:
-            self.capacity0_12 += self.get_total_capacity_for_id(f)
-            self.capacity0_5 += self.get_05_capacity_for_id(f)
-            self.facility_ids.append(f)
-
-        self.locations_list = entry.get("potential_locations")
-    '''
-
-    def get_total_capacity_for_id(self, facility_id):
-        return self.childcare_dict[facility_id]["total_capacity"]
-    
-    def get_05_capacity_for_id(self, facility_id):
-        return (self.childcare_dict[facility_id]["infant_capacity"] + 
-                self.childcare_dict[facility_id]["toddler_capacity"] + 
-                self.childcare_dict[facility_id]["preschool_capacity"])
+        
