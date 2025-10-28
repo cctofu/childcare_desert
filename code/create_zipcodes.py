@@ -1,11 +1,11 @@
 import colorful as cf
-from collections import defaultdict
 from tqdm import tqdm
 import numpy as np
 from utils import load_csv, normalize_zip
 from structs.zipcode import Zipcodes
 import sys
 cf.use_style('monokai')
+
 
 '''
 Finds all NY zipcodes
@@ -20,6 +20,9 @@ def find_zipcode_union(map):
     return len(all_zips), all_zips
 
 
+'''
+Loads Income from zipcode 
+'''
 def get_income(zipcode_id):
     avg_inc_df = load_csv("./data/avg_individual_income.csv", "ZIP code")
     avg_inc_df = avg_inc_df.set_index("ZIP code")
@@ -29,6 +32,9 @@ def get_income(zipcode_id):
         return -1
 
 
+'''
+Loads Employment rate from zipcode 
+'''
 def get_employment(zipcode_id):
     emp_rate_df = load_csv("./data/employment_rate.csv", "zipcode")
     emp_rate_df = emp_rate_df.set_index("zipcode")
@@ -38,6 +44,9 @@ def get_employment(zipcode_id):
         return -1
 
 
+'''
+Loads Population from zipcode 
+'''
 def get_population(zipcode_id):
     pop_df = load_csv("./data/population.csv", "zipcode")
     pop_df = pop_df.set_index("zipcode")
@@ -49,6 +58,9 @@ def get_population(zipcode_id):
         return (-1, -1)
 
 
+'''
+Loads Existing childcare from zipcode 
+'''
 def get_existing_childcare(zipcode_id):
     child_care_df = load_csv("./data/child_care_regulated.csv", "zip_code")
     child_care_df = child_care_df.set_index("zip_code")
@@ -67,6 +79,9 @@ def get_existing_childcare(zipcode_id):
         return {}
 
 
+'''
+Loads Potential locations from zipcode 
+'''
 def get_potential_childcare(zipcode_id):
     potent_care_df = load_csv("./data/potential_locations.csv", "zipcode")
     potent_care_df = potent_care_df.set_index("zipcode")

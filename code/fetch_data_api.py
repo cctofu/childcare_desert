@@ -1,12 +1,14 @@
 import requests
-from typing import Any, Dict
 import json
 from tqdm import tqdm
 import colorful as cf
 from structs.zipcode import Zipcodes
 from utils import normalize_zip
 import sys
+import os
+from dotenv import load_dotenv
 cf.use_style('monokai')
+load_dotenv()
 
 ACS_YEAR = "2023"
 BASE_DETAILED = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5"
@@ -15,8 +17,12 @@ BASE_PROFILE = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5/profile"
 VARS_DETAILED = ["NAME", "B01003_001E", "B19301_001E"]  
 VARS_SUBJECT  = ["S2301_C03_001E"]                     
 
-def _get_json(base_url: str, params: Dict[str, str]) -> Dict[str, Any]:
-    api_key = "a07e88f5c9cfb9e4790f66f53fa31f93010921ec" 
+
+'''
+Loads Income from zipcode 
+'''
+def _get_json(base_url, params):
+    api_key = os.getenv("API_KEY")
     q = {**params, "key": api_key} 
     r = requests.get(base_url, params=q, timeout=20)
     if r.status_code == 204:
@@ -37,13 +43,14 @@ def _get_json(base_url: str, params: Dict[str, str]) -> Dict[str, Any]:
     return dict(zip(headers, row))
 
 
-def _to_float_or_zero(x: Any) -> Any:
+def _to_float_or_zero(x):
     try:
         if x in (None, "", "null", -666666666.0, "-666666666.0"):
             return 0
         return float(x)
     except Exception:
         return 0
+
 
 def safe_int(x):
     try:
@@ -52,6 +59,7 @@ def safe_int(x):
         return int(float(x))
     except Exception:
         return 0
+
 
 def fetch_data(data):
     zipcodes = Zipcodes(data)
@@ -109,6 +117,7 @@ def fetch_data(data):
     print(cf.bold(cf.seaGreen(f'Added {cf.yellow(population0_5_changed)} missing <population 0 to 5> values')))
     print(cf.bold(cf.seaGreen(f'Added {cf.yellow(population0_12_changed)} missing <population 0 to 12> values')))
     return zipcodes
+
 
 if __name__ == "__main__":
     in_path = sys.argv[1] 
