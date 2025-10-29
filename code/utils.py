@@ -6,7 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-
+import colorful as cf
 
 '''
 Ensure zipcode is 5 digits, trim to 5 if longer than 5
@@ -122,5 +122,48 @@ def plot_u_expansion(u, bin_size, part2, save_dir="./outputs"):
         save_path = os.path.join(save_dir, "u_expansion_2.png")
     else:
         save_path = os.path.join(save_dir, "u_expansion_1.png")
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+
+'''
+Cost breakdown for the optimal budget
+'''
+def plot_cost_breakdown(m, expansion_cost, new_build_cost, equip_cost, part2, save_dir="./outputs"):
+    import os
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    os.makedirs(save_dir, exist_ok=True)
+    df = pd.DataFrame({
+        "Category": ["Expansion", "New Builds", "Equipment"],
+        "Cost": [expansion_cost.getValue(), new_build_cost.getValue(), equip_cost.getValue()]
+    })
+
+    plt.figure(figsize=(10, 7))
+    ax = sns.barplot(
+        data=df, x="Category", y="Cost",
+        hue="Category", palette="viridis", legend=False
+    )
+
+    # --- Add headroom above tallest bar ---
+    ax.margins(y=0.2)  # adds 20% extra vertical space
+
+    # --- Labels and formatting ---
+    plt.title(f"Cost Breakdown — {'Part 2' if part2 else 'Part 1'}",
+              fontsize=14, fontweight="bold")
+    plt.ylabel("Cost ($)")
+    plt.xticks(rotation=15)
+
+    # --- Add text labels above bars ---
+    for idx, val in enumerate(df["Cost"]):
+        plt.text(idx, val + 0.02 * df["Cost"].max(),
+                 f"${val/1e6:.2f} M", ha="center", va="bottom",
+                 fontsize=10, fontweight="medium")
+
+    # Tight layout + save
+    plt.tight_layout(pad=2)
+    save_path = os.path.join(save_dir, f"cost_breakdown_{'part2' if part2 else 'part1'}.png")
     plt.savefig(save_path, dpi=300)
     plt.close()

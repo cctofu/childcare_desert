@@ -135,7 +135,6 @@ class Zipcodes:
         return R * c
 
     def get_distance(self, facility1, facility2):
-        """Return distance (miles) between two existing facilities."""
         f1, f2 = None, None
         for zipcode_data in self.data.values():
             childcare_dict = zipcode_data.get("childcare_dict", {})
@@ -149,7 +148,6 @@ class Zipcodes:
 
 
     def get_site_distance(self, zipcode, site_idx1, site_idx2):
-        """Return distance (miles) between two potential locations in a zipcode."""
         locs = self.data[zipcode]["potential_locations"]
         lat1, lon1 = locs[site_idx1]["latitude"], locs[site_idx1]["longitude"]
         lat2, lon2 = locs[site_idx2]["latitude"], locs[site_idx2]["longitude"]
@@ -157,7 +155,6 @@ class Zipcodes:
 
 
     def get_distance_to_facility(self, zipcode, site_idx, facility_id):
-        """Return distance (miles) between a potential site and an existing facility."""
         loc = self.data[zipcode]["potential_locations"][site_idx]
         fac = self.data[zipcode]["childcare_dict"][facility_id]
         return self._haversine_miles(

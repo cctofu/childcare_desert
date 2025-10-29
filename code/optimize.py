@@ -3,7 +3,7 @@ from gurobipy import Model, GRB, quicksum
 import colorful as cf
 import sys
 from structs.zipcode import Zipcodes
-from utils import plot_x_expansion, plot_u_expansion
+import utils
 
 cf.use_style('monokai')
 
@@ -173,8 +173,9 @@ def optimize(zipcodes: Zipcodes, bin_size, part2=False):
         print(cf.seaGreen("Status: " + cf.bold(cf.yellow("OPTIMAL"))))
         print(cf.seaGreen("Objective value: " + cf.bold(cf.yellow(f"${m.ObjVal:,.0f}"))))
         print("\n")
-        plot_x_expansion(x, F, 20, part2)
-        plot_u_expansion(u, 20, part2)
+        utils.plot_x_expansion(x, F, 20, part2)
+        utils.plot_u_expansion(u, 20, part2)
+        utils.plot_cost_breakdown(m, expansion_cost, new_build_cost, equip_cost, part2)
     else:
         print(cf.red("No feasible or optimal solution found."))
 
@@ -185,6 +186,7 @@ if __name__ == "__main__":
     with open(in_path, "r") as f:
         data = json.load(f)
     zipcodes = Zipcodes(data)
+
     # Part 1 optimization
     optimize(zipcodes, bin_size, part2=False)
     # Part 2 optimization

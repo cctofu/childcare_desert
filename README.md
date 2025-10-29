@@ -25,16 +25,33 @@ childcare_desert/
     └── zip_coverage.csv
 ```
 
-### Constructing Zipcode data
-Then create zipcode dataset using command:
+### Running Implementation
+If all dependancies are installed correctly, first activate `conda` virtual env:
 ```
-python ./code/create_zipcodes.py
+conda activate <your env name>
 ```
-This should create a file `zipcode.json` in the `./data` file.
+Then run the `.sh` file `run.sh`
+```
+bash ./run.sh
+```
 
-### Running optimization
-Finally, run optimization based on parameters and constraints listed:
+### Running Part of the Implementation
+There are also two `.sh` files `preprocess.sh` and `optimize.sh` that run the code for their parts. 
 ```
-python ./code/optimize.py
+bash ./preprocess.sh # Process data and fetch from api
+bash ./optimize.sh # Run optimization on the given dataset json file
 ```
-The outputted results is the optimal solution for the given problem
+`optimize.sh` includes both the optimization for part 1 and optimization in part 2. The optimal values for each of the linear programs will be outputted and the graphs will be saved to the `./outputs` folder
+
+If run correctly the result of the optimization should look something like:
+```
+Got zipcode data from: ./outputs/zipcodes_filled_1.json
+=== Part 1 Optimization summary ===
+Status: OPTIMAL
+Objective value: $320,735,700
+
+=== Part 2 Optimization summary ===
+Status: OPTIMAL
+Objective value: $511,744,910
+
+```
