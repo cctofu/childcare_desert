@@ -24,6 +24,10 @@ childcare_desert/
     ├── potential_locations.csv
     └── zip_coverage.csv
 ```
+Create file .env, then put the api key for the US census into the file in the form:
+```
+API_KEY = "<Your key>"
+```
 
 ### Running Implementation
 If all dependancies are installed correctly, first activate `conda` virtual env:
@@ -53,5 +57,15 @@ Objective value: $320,735,700
 === Part 2 Optimization summary ===
 Status: OPTIMAL
 Objective value: $511,744,910
-
 ```
+
+### Visualizing the Map
+First go to website
+```
+https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html
+```
+to download ZIP Code Tabulation Areas (ZCTAs) file. Then once downloaded, create a folder name `./extra_data` and put the file into the folder. Then run the command:
+```
+bash ./map_zips.sh
+```
+Modify the mapped union as needed
