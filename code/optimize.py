@@ -183,8 +183,8 @@ def optimize(zipcodes: Zipcodes, bin_size, plot_on, part2=False):
 
 if __name__ == "__main__":
     in_path = sys.argv[1] 
-    bin_size = sys.argv[2] 
-    plot_on = sys.argv[3]
+    bin_size = int(sys.argv[2])
+    plot_on = sys.argv[3].lower() == "true"
 
     # Fetch data
     print(cf.bold(cf.seaGreen(f"Got zipcode data from: {cf.yellow(in_path)}")))
