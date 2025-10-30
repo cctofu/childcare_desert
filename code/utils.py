@@ -148,7 +148,7 @@ def plot_cost_breakdown(m, expansion_cost, new_build_cost, equip_cost, part2, sa
                  fontsize=10, fontweight="medium")
 
     plt.tight_layout(pad=2)
-    save_path = os.path.join(save_dir, f"cost_breakdowntest_{'part2' if part2 else 'part1'}.png")
+    save_path = os.path.join(save_dir, f"cost_breakdown_{'part2' if part2 else 'part1'}.png")
     plt.savefig(save_path, dpi=300)
     plt.close()
 

@@ -41,6 +41,7 @@ def optimize(zipcodes: Zipcodes, bin_size, plot_on, part2=False):
                 t2[f] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"t2[{f}]")
                 t3[f] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"t3[{f}]")
 
+
     # ---------- New facility variables ----------
     y, v, y_site, v_site = {}, {}, {}, {}
     if part2:
@@ -50,40 +51,12 @@ def optimize(zipcodes: Zipcodes, bin_size, plot_on, part2=False):
                 for s in FACILITY_TYPES:
                     y_site[i, l, s] = m.addVar(vtype=GRB.BINARY, name=f"y_site[{i},{l},{s}]")
                     v_site[i, l, s] = m.addVar(lb=0.0, vtype=GRB.INTEGER, name=f"v_site[{i},{l},{s}]")
-
         # aggregate to zipcode level
         for i in I:
             locs = zipcodes.data[i]["potential_locations"]
             for s in FACILITY_TYPES:
                 y[i, s] = quicksum(y_site[i, l, s] for l in range(len(locs)))
                 v[i, s] = quicksum(v_site[i, l, s] for l in range(len(locs)))
-
-        # site constraints
-        for i in I:
-            locs = zipcodes.data[i]["potential_locations"]
-            for l in range(len(locs)):
-                m.addConstr(quicksum(y_site[i, l, s] for s in FACILITY_TYPES) <= 1)
-
-        # distance rules
-        for i in I:
-            locs = zipcodes.data[i]["potential_locations"]
-            for a in range(len(locs)):
-                for b in range(a + 1, len(locs)):
-                    d = zipcodes.get_site_distance(i, a, b)
-                    if d < DIST_LIMIT:
-                        m.addConstr(
-                            quicksum(y_site[i, a, s] for s in FACILITY_TYPES) +
-                            quicksum(y_site[i, b, s] for s in FACILITY_TYPES) <= 1
-                        )
-
-        # distance between potential sites and valid existing facilities
-        for i in I:
-            locs = zipcodes.data[i]["potential_locations"]
-            for l in range(len(locs)):
-                for f in F[i]:
-                    d = zipcodes.get_distance_to_facility(i, l, f)
-                    if d < DIST_LIMIT:
-                        m.addConstr(quicksum(y_site[i, l, s] for s in FACILITY_TYPES) <= 1)
     else:
         for i in I:
             for s in FACILITY_TYPES:
@@ -92,33 +65,40 @@ def optimize(zipcodes: Zipcodes, bin_size, plot_on, part2=False):
 
     m.update()
 
+
     # ---------- Constraints ----------
+    # Expansion limits
     for i in I:
         for f in F[i]:
-            cap = zipcodes.get_total_cap_for_facility(i, f)
+            cap = zipcodes.get_children_cap_for_facility(i, f)
             if part2:
-                m.addConstr(x[f] <= 0.2 * cap)
                 m.addConstr(x[f] == t1[f] + t2[f] + t3[f])
                 m.addConstr(t1[f] <= 0.10 * cap)
                 m.addConstr(t2[f] <= 0.05 * cap)
                 m.addConstr(t3[f] <= 0.05 * cap)
-            else:
                 limit = min(1.2 * cap, 500)
-                m.addConstr(x[f] <= limit)
+                if cap > limit:
+                    limit = cap
+                m.addConstr(cap + x[f] <= limit)
+            else:
+                limit = min(2.2 * cap, 500)
+                if cap > limit:
+                    limit = cap
+                m.addConstr(cap + x[f] <= limit)
 
-    # Coverage + 0–5 coverage
+    # Coverage and 0–5 coverage
     for i in I:
-        base_cap = zipcodes.get_total_cap_for_zipcode(i)
         m.addConstr(
-            base_cap +
+            zipcodes.get_children_cap_for_zipcode(i) +
             quicksum(x[f] for f in F[i]) +
             quicksum(FACILITY_TYPES[s]["Cap"] * y[i, s] for s in FACILITY_TYPES)
-            >= zipcodes.get_theta_for_zipcode(i) * zipcodes.get_population0_12_for_zipcode(i)
+            >= zipcodes.get_theta_for_zipcode(i) * zipcodes.get_children_population_for_zipcode(i)
         )
         m.addConstr(
+            zipcodes.get_infant_cap_for_zipcode(i) +
             quicksum(u[f] for f in F[i]) +
             quicksum(v[i, s] for s in FACILITY_TYPES)
-            >= (2/3) * zipcodes.get_population0_5_for_zipcode(i)
+            >= (2/3) * zipcodes.get_infant_population_for_zipcode(i)
         )
 
     # Consistency
@@ -132,14 +112,43 @@ def optimize(zipcodes: Zipcodes, bin_size, plot_on, part2=False):
     if not part2:
         for i in I:
             for f in F[i]:
-                cap = zipcodes.get_total_cap_for_facility(i, f)
-                x_max = min(1.2 * cap, 500.0)
-                M = x_max + cap
-                m.addConstr(x[f] - cap <= M * z[f])
-                m.addConstr(x[f] - cap >= -M * (1 - z[f]))
+                cap = zipcodes.get_children_cap_for_facility(i, f)
+                limit = min(2.2 * cap, 500.0)
+                if cap > limit:
+                    limit = cap
+                m.addGenConstrIndicator(z[f], True,  x[f] >= cap,    name=f"trigger_on[{f}]")
+                m.addGenConstrIndicator(z[f], False, x[f] <= cap - 1e-3, name=f"trigger_off[{f}]")
+    else:
+        # site constraints
+        for i in I:
+            locs = zipcodes.data[i]["potential_locations"]
+            for l in range(len(locs)):
+                m.addConstr(quicksum(y_site[i, l, s] for s in FACILITY_TYPES) <= 1)
+
+        # distance between potential locations
+        for i in I:
+            locs = zipcodes.data[i]["potential_locations"]
+            for a in range(len(locs)):
+                for b in range(a + 1, len(locs)):
+                    d = zipcodes.get_site_distance(i, a, b)
+                    if d < DIST_LIMIT:
+                        m.addConstr(
+                            quicksum(y_site[i, a, s] for s in FACILITY_TYPES) +
+                            quicksum(y_site[i, b, s] for s in FACILITY_TYPES) <= 1
+                        )
+
+        # distance between potential locations and existing facilities
+        for i in I:
+            locs = zipcodes.data[i]["potential_locations"]
+            for l in range(len(locs)):
+                for f in F[i]:
+                    d = zipcodes.get_distance_to_facility(i, l, f)
+                    if d < DIST_LIMIT:
+                        m.addConstr(quicksum(y_site[i, l, s] for s in FACILITY_TYPES) <= 1)
+
 
     # ---------- Objective Function ----------
-    new_build_cost = quicksum(FACILITY_TYPES[s]["Cost"] * y[i, s] for i in I for s in FACILITY_TYPES)
+    facility_cost = quicksum(FACILITY_TYPES[s]["Cost"] * y[i, s] for i in I for s in FACILITY_TYPES)
     equip_cost = BETA * (
         quicksum(u[f] for i in I for f in F[i]) +
         quicksum(v[i, s] for i in I for s in FACILITY_TYPES)
@@ -148,7 +157,7 @@ def optimize(zipcodes: Zipcodes, bin_size, plot_on, part2=False):
         expansion_cost_terms = []
         for i in I:
             for f in F[i]:
-                cap = zipcodes.get_total_cap_for_facility(i, f)
+                cap = zipcodes.get_children_cap_for_facility(i, f)
                 coef_base = 20000.0 / cap
                 expansion_cost_terms.append((200.0 + coef_base)  * t1[f])
                 expansion_cost_terms.append((400.0 + coef_base)  * t2[f])
@@ -156,10 +165,10 @@ def optimize(zipcodes: Zipcodes, bin_size, plot_on, part2=False):
         expansion_cost = quicksum(expansion_cost_terms)
     else:
         expansion_cost = quicksum(
-            (DELTA + 200.0 * zipcodes.get_total_cap_for_facility(i, f)) * z[f] + ALPHA * x[f]
+            (DELTA + 200.0 * zipcodes.get_children_cap_for_facility(i, f)) * z[f] + ALPHA * x[f]
             for i in I for f in F[i]
         )
-    m.setObjective(expansion_cost + new_build_cost + equip_cost, GRB.MINIMIZE)
+    m.setObjective(expansion_cost + facility_cost + equip_cost, GRB.MINIMIZE)
     
     # ---------- Optimize ----------
     m.optimize()
@@ -176,10 +185,10 @@ def optimize(zipcodes: Zipcodes, bin_size, plot_on, part2=False):
         if plot_on:
             utils.plot_x_expansion(x, F, bin_size, part2)
             utils.plot_u_expansion(u, bin_size, part2)
-            utils.plot_cost_breakdown(m, expansion_cost, new_build_cost, equip_cost, part2)
+            utils.plot_cost_breakdown(m, expansion_cost, facility_cost, equip_cost, part2)
             utils.plot_added_capacity_by_zip(zipcodes, x, y, FACILITY_TYPES, part2)
     else:
-        print(cf.red("No feasible or optimal solution found."))
+        print(cf.orange("No feasible or optimal solution found."))
 
 if __name__ == "__main__":
     in_path = sys.argv[1] 

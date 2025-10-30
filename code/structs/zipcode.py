@@ -49,13 +49,25 @@ class Zipcodes:
             facilities[key] = self.data[key]['childcare_dict']
         return facilities
     
-    def get_total_cap_for_facility(self, key, facility):
+    def get_children_cap_for_facility(self, key, facility):
         return self.data[key]['childcare_dict'][facility]['total_capacity']
     
-    def get_total_cap_for_zipcode(self, key):
+    def get_children_cap_for_zipcode(self, key):
         total = 0
         for f in self.data[key]['childcare_dict']:
             total += self.data[key]['childcare_dict'][f]['total_capacity']
+        return total
+    
+    def get_children_population_for_zipcode(self, key):
+        return self.data[key]['population0_12']
+
+    def get_infant_population_for_zipcode(self, key):
+        return self.data[key]['population0_5']
+    
+    def get_infant_cap_for_zipcode(self, key):
+        total = 0
+        for f in self.data[key]['childcare_dict']:
+            total += self.data[key]['childcare_dict'][f]['infant_capacity']
         return total
     
     def get_infant_cap_for_facility(self, key, facility):
@@ -68,12 +80,6 @@ class Zipcodes:
             return 0.5
         else:
             return (1.0 / 3.0)
-    
-    def get_population0_12_for_zipcode(self, key):
-        return self.data[key]['population0_12']
-
-    def get_population0_5_for_zipcode(self, key):
-        return self.data[key]['population0_5']
 
     def get_missing_data_length(self):
         return len(self.missing_data)
@@ -117,14 +123,6 @@ class Zipcodes:
         with open(path, "w") as f:
             json.dump(self.data, f, indent=2)
 
-    def get_total_capacity_for_id(self, facility_id):
-        return self.childcare_dict[facility_id]["total_capacity"]
-    
-    def get_05_capacity_for_id(self, facility_id):
-        return (self.childcare_dict[facility_id]["infant_capacity"] + 
-                self.childcare_dict[facility_id]["toddler_capacity"] + 
-                self.childcare_dict[facility_id]["preschool_capacity"])
-
     def _haversine_miles(self, lat1, lon1, lat2, lon2):
         R = 3958.8 
         phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -134,25 +132,11 @@ class Zipcodes:
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return R * c
 
-    def get_distance(self, facility1, facility2):
-        f1, f2 = None, None
-        for zipcode_data in self.data.values():
-            childcare_dict = zipcode_data.get("childcare_dict", {})
-            if facility1 in childcare_dict:
-                f1 = childcare_dict[facility1]
-            if facility2 in childcare_dict:
-                f2 = childcare_dict[facility2]
-        if not f1 or not f2:
-            raise ValueError(f"Facilities {facility1} and/or {facility2} not found.")
-        return self._haversine_miles(f1["latitude"], f1["longitude"], f2["latitude"], f2["longitude"])
-
-
-    def get_site_distance(self, zipcode, site_idx1, site_idx2):
+    def get_site_distance(self, zipcode, site1, site2):
         locs = self.data[zipcode]["potential_locations"]
-        lat1, lon1 = locs[site_idx1]["latitude"], locs[site_idx1]["longitude"]
-        lat2, lon2 = locs[site_idx2]["latitude"], locs[site_idx2]["longitude"]
+        lat1, lon1 = locs[site1]["latitude"], locs[site1]["longitude"]
+        lat2, lon2 = locs[site2]["latitude"], locs[site2]["longitude"]
         return self._haversine_miles(lat1, lon1, lat2, lon2)
-
 
     def get_distance_to_facility(self, zipcode, site_idx, facility_id):
         loc = self.data[zipcode]["potential_locations"][site_idx]
