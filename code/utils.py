@@ -1,6 +1,3 @@
-'''
-UTILITY FUNCTIONS
-'''
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -18,10 +15,8 @@ def normalize_zip(z):
     s = str(z).strip()
     if not s:
         return None
-    # If it's longer than 5 (e.g., ZIP+4), truncate to 5
     if len(s) > 5:
         s = s[:5]
-    # Zero-pad if numeric and shorter than 5
     if s.isdigit() and len(s) < 5:
         s = s.zfill(5)
     return s
@@ -47,7 +42,7 @@ def plot_x_expansion(x, F, bin_size, part2, save_dir="./outputs"):
 
     for i in F:
         expansions = [x[f].X for f in F[i]]
-        if all(abs(val) < 1e-6 for val in expansions):  # all zero
+        if all(abs(val) < 1e-6 for val in expansions): 
             zero_count += 1
         else:
             avg_expansion = sum(expansions) / len(expansions)
@@ -55,14 +50,12 @@ def plot_x_expansion(x, F, bin_size, part2, save_dir="./outputs"):
                 avg_expansions.append(avg_expansion)
 
     max_val = max(avg_expansions) if avg_expansions else 0
-    bins = np.arange(1, max_val + bin_size, bin_size)  # start from 1
+    bins = np.arange(1, max_val + bin_size, bin_size)  
     labels = [f"{int(b)}–{int(b + bin_size - 1)}" for b in bins[:-1]]
 
     df = pd.DataFrame({"avg_expansion": avg_expansions})
     df["bin"] = pd.cut(df["avg_expansion"], bins=bins, labels=labels, include_lowest=True)
     grouped = df["bin"].value_counts().sort_index()
-
-    # prepend separate zero bin
     grouped = pd.concat([pd.Series({"0": zero_count}), grouped])
 
     plt.figure(figsize=(10, 7))
@@ -101,8 +94,6 @@ def plot_u_expansion(u, bin_size, part2, save_dir="./outputs"):
     df = pd.DataFrame({"u_value": u_values})
     df["bin"] = pd.cut(df["u_value"], bins=bins, labels=labels, include_lowest=True)
     grouped = df["bin"].value_counts().sort_index()
-
-    # prepend separate zero bin
     grouped = pd.concat([pd.Series({"0": zero_count}), grouped])
 
     plt.figure(figsize=(10, 7))
@@ -146,24 +137,73 @@ def plot_cost_breakdown(m, expansion_cost, new_build_cost, equip_cost, part2, sa
         data=df, x="Category", y="Cost",
         hue="Category", palette="viridis", legend=False
     )
-
-    # --- Add headroom above tallest bar ---
-    ax.margins(y=0.2)  # adds 20% extra vertical space
-
-    # --- Labels and formatting ---
+    ax.margins(y=0.2)
     plt.title(f"Cost Breakdown — {'Part 2' if part2 else 'Part 1'}",
               fontsize=14, fontweight="bold")
     plt.ylabel("Cost ($)")
     plt.xticks(rotation=15)
-
-    # --- Add text labels above bars ---
     for idx, val in enumerate(df["Cost"]):
         plt.text(idx, val + 0.02 * df["Cost"].max(),
                  f"${val/1e6:.2f} M", ha="center", va="bottom",
                  fontsize=10, fontweight="medium")
 
-    # Tight layout + save
     plt.tight_layout(pad=2)
-    save_path = os.path.join(save_dir, f"cost_breakdown_{'part2' if part2 else 'part1'}.png")
+    save_path = os.path.join(save_dir, f"cost_breakdowntest_{'part2' if part2 else 'part1'}.png")
     plt.savefig(save_path, dpi=300)
     plt.close()
+
+
+"""
+Plot newly added and expanded slots by ZIP code.
+"""
+def plot_added_capacity_by_zip(zipcodes, x, y, FACILITY_TYPES, part2):
+    if part2:
+        save_path="./outputs/added_capacity_by_zip_2.png"
+    else:
+        save_path="./outputs/added_capacity_by_zip_1.png"
+    zip_list = sorted(list(zipcodes.get_complete_data()))
+    expanded_slots, new_slots = [], []
+
+    for i in zip_list:
+        exp_sum = 0.0
+        for f in zipcodes.data[i]["childcare_dict"]:
+            val = x.get(f, 0)
+            try:
+                exp_sum += float(val.X)
+            except AttributeError:
+                exp_sum += float(val)
+        expanded_slots.append(exp_sum)
+
+        new_sum = 0.0
+        for s in ["S", "M", "L"]:
+            key = (i, s)
+            if key in y:
+                val = y[key]
+                try:
+                    numeric_val = float(val.X)
+                except AttributeError:
+                    try:
+                        numeric_val = float(val.getValue()) 
+                    except Exception:
+                        numeric_val = 0.0
+                new_sum += numeric_val * FACILITY_TYPES[s]["Cap"]
+        new_slots.append(new_sum)
+
+    indices = np.arange(len(zip_list))
+    bar_width = 0.4
+    plt.figure(figsize=(12, 6))
+    plt.bar(indices - bar_width/2, expanded_slots, bar_width, label="Expanded Slots", color="#2E86C1")
+    plt.bar(indices + bar_width/2, new_slots, bar_width, label="New Slots", color="#E67E22")
+
+    tick_positions = indices[::35]
+    tick_labels = [zip_list[i] for i in range(0, len(zip_list), 35)]
+    plt.xticks(tick_positions, tick_labels, rotation=90, fontsize=8)
+    plt.title("Newly Added and Expanded Slots by ZIP Code", fontsize=14, weight="bold")
+    plt.xlabel("ZIP Code", fontsize=12)
+    plt.ylabel("Number of Slots", fontsize=12)
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.7)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+

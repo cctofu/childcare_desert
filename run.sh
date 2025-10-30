@@ -13,4 +13,5 @@ python ./code/fetch_data_api.py "$OUT_PATH" "$OUT_PATH2"
 # Run Optimization
 BIN_SIZE=20
 DATA_PATH="./outputs/zipcodes_partial.json"
-python ./code/optimize.py "$DATA_PATH" $BIN_SIZE
+PLOT_ON=false
+python ./code/optimize.py "$DATA_PATH" $BIN_SIZE $PLOT_ON
