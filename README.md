@@ -1,11 +1,35 @@
 # 🗽 Eliminating Child Care Deserts in New York State
 
-### ⚙️ Install Dependencies
+###  🚀 Simple run (Only optimization)
+Create a new Conda environment and install all required packages:
+```bash
+conda env create -f environment.yml
+```
+
+Activate conda environment
+```bash
+conda activate <your_env_name>
+```
+
+Run optimization
+```bash
+bash ./optimize.sh     # 🧮 Run optimization for Part 1 and Part 2
+```
+
+---
+
+### 🚀 Full Process (Data Processing + Optimization)
 
 Create a new Conda environment and install all required packages:
 
 ```bash
 conda env create -f environment.yml
+```
+
+After dependencies are installed, activate your Conda virtual environment:
+
+```bash
+conda activate <your_env_name>
 ```
 
 Place the five required data files for the problem inside a folder named `data`.
@@ -34,16 +58,6 @@ Create a `.env` file to store your U.S. Census API key in the following format:
 
 ```bash
 API_KEY = "<Your key>"
-```
-
----
-
-### 🚀 Running the Implementation
-
-After dependencies are installed, activate your Conda virtual environment:
-
-```bash
-conda activate <your_env_name>
 ```
 
 Then simply run the main shell script:
